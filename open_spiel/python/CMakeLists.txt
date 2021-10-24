@@ -186,6 +186,8 @@ set(PYTHON_TESTS ${PYTHON_TESTS}
   games/dynamic_routing_test.py
   games/dynamic_routing_utils_test.py
   games/tic_tac_toe_test.py
+  games/new_game_test.py
+  games/schafkopf_test.py
   mfg/algorithms/best_response_value_test.py
   mfg/algorithms/fictitious_play_test.py
   mfg/algorithms/mirror_descent_test.py
@@ -273,6 +275,7 @@ if (OPEN_SPIEL_ENABLE_PYTHON_MISC)
       egt/alpharank_visualizer_test.py
       egt/visualization_test.py
       games/kuhn_poker_test.py
+      games/schafkopf_test.py
       tests/matrix_game_utils_test.py
   )
 endif()
@@ -282,6 +285,7 @@ endif()
 set(WHEEL_EXCLUDED_PYTHON_TESTS
   algorithms/response_graph_ucb_test.py
   games/tic_tac_toe_test.py
+  games/new_game_test.py
   ../integration_tests/playthrough_test.py)
 
 # Create a python test.

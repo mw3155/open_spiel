@@ -37,8 +37,8 @@ _NUM_ROWS = 3
 _NUM_COLS = 3
 _NUM_CELLS = _NUM_ROWS * _NUM_COLS
 _GAME_TYPE = pyspiel.GameType(
-    short_name="python_tic_tac_toe",
-    long_name="Python Tic-Tac-Toe",
+    short_name="python_new_game",
+    long_name="Python new game",
     dynamics=pyspiel.GameType.Dynamics.SEQUENTIAL,
     chance_mode=pyspiel.GameType.ChanceMode.DETERMINISTIC,
     information=pyspiel.GameType.Information.PERFECT_INFORMATION,
@@ -61,16 +61,15 @@ _GAME_INFO = pyspiel.GameInfo(
     max_game_length=_NUM_CELLS)
 
 
-class TicTacToeGame(pyspiel.Game):
+class NewGameGame(pyspiel.Game):
   """A Python version of the Tic-Tac-Toe game."""
 
   def __init__(self, params=None):
-    print("heeeeelllloooo")
     super().__init__(_GAME_TYPE, _GAME_INFO, params or dict())
 
   def new_initial_state(self):
     """Returns a state corresponding to the start of a game."""
-    return TicTacToeState(self)
+    return NewGameState(self)
 
   def make_py_observer(self, iig_obs_type=None, params=None):
     """Returns an object used for observing game state."""
@@ -81,7 +80,7 @@ class TicTacToeGame(pyspiel.Game):
       return IIGObserverForPublicInfoGame(iig_obs_type, params)
 
 
-class TicTacToeState(pyspiel.State):
+class NewGameState(pyspiel.State):
   """A python version of the Tic-Tac-Toe state."""
 
   def __init__(self, game):
@@ -194,4 +193,4 @@ def _board_to_string(board):
 
 # Register the game with the OpenSpiel library
 
-pyspiel.register_game(_GAME_TYPE, TicTacToeGame)
+pyspiel.register_game(_GAME_TYPE, NewGameGame)

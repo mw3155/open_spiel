@@ -95,6 +95,7 @@ EXPECTED_GAMES = set([
     "python_mfg_predator_prey",
     "python_kuhn_poker",
     "python_tic_tac_toe",
+    "python_new_game",
     "quoridor",
     "repeated_game",
     "rbc",
@@ -196,6 +197,13 @@ class PyspielTest(absltest.TestCase):
 
   def test_tic_tac_toe(self):
     game = pyspiel.load_game("tic_tac_toe")
+    state = game.new_initial_state()
+    self.assertFalse(state.is_chance_node())
+    self.assertFalse(state.is_terminal())
+    self.assertEqual(state.legal_actions(), [0, 1, 2, 3, 4, 5, 6, 7, 8])
+
+  def test_new_game(self):
+    game = pyspiel.load_game("python_new_game")
     state = game.new_initial_state()
     self.assertFalse(state.is_chance_node())
     self.assertFalse(state.is_terminal())

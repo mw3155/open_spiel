@@ -19,21 +19,31 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import app
+from absl import flags
+
 
 from open_spiel.python.algorithms import cfr
 from open_spiel.python.algorithms import expected_game_score
 import pyspiel
 
 
+FLAGS = flags.FLAGS
+
+flags.DEFINE_integer("iterations", 1000, "Number of iterations")
+flags.DEFINE_string("game", "kuhn_poker", "Name of the game")
+flags.DEFINE_integer("players", 2, "Number of players")
+flags.DEFINE_integer("print_freq", 100, "How often to print the exploit    ability")
+
+
 def main(_):
-  game = pyspiel.load_game("kuhn_poker")
+  game = pyspiel.load_game(FLAGS.game)
 
   cfr_solver = cfr.CFRSolver(game)
-  iterations = 1000
 
-  for i in range(iterations):
+  for i in range(FLAGS.iterations):
     cfr_value = cfr_solver.evaluate_and_update_policy()
-    print("Game util at iteration {}: {}".format(i, cfr_value))
+    if i%FLAGS.print_freq == 0:
+      print("Game util at iteration {}: {}".format(i, cfr_value))
 
   average_policy = cfr_solver.average_policy()
   average_policy_values = expected_game_score.policy_value(
