@@ -68,8 +68,8 @@ def CardValue(card):
 
 
 _NUM_PLAYERS = 2
-_NUM_SUITS = 2
-_NUM_RANKS = 2
+_NUM_SUITS = 1
+_NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
 _NUM_TRICKS = _NUM_CARDS / _NUM_PLAYERS
 _NUM_ACTIONS = _NUM_CARDS
@@ -155,26 +155,12 @@ class SchafkopfState(pyspiel.State):
     super().__init__(game)
 
     self._phase = Phase.Deal
-
-    # deal random cards; why not working with CFR?
-    idx_cards_p0 = random.sample(range(_NUM_CARDS), _NUM_CARDS // 2)
-    #TODO: need dealing
-    #idx_cards_p0 = list(range(_NUM_CARDS//2,_NUM_CARDS))
-    #idx_cards_p0 = list(range(1, _NUM_CARDS, 2))
-
     self._card_locations = [CardLocation.Deck] * _NUM_CARDS
-    #self._card_locations = [
-    #  CardLocation.Hand0 \
-    #    if i in idx_cards_p0 \
-    #    else CardLocation.Hand1 \
-    #  for i in range(_NUM_CARDS)
-    #]
-
     self._num_cards_played = 0
     self._tricks = []
 
-    self._returns = [0,0]
-    self._points = [0.0, 0.0]
+    self._returns = [0.0] * _NUM_PLAYERS
+    self._points = [0.0] * _NUM_PLAYERS
     self._max_points = 0
     for c in range(_NUM_CARDS):
       self._max_points += CardValue(c)
@@ -286,20 +272,26 @@ class SchafkopfState(pyspiel.State):
       self._card_locations[card] = CardLocation.Trick
       self._num_cards_played += 1
 
-      # check winner
-      winner = self.winner(self._tricks[-1])
+      # trick finished?
+      if self._num_cards_played % _NUM_PLAYERS == 0:
+        # check winner
+        winner = self.winner(self._tricks[-1])
 
-      # add points
-      self._points[winner] += self._tricks[-1].points()
+        # add points
+        self._points[winner] += self._tricks[-1].points()
 
-      # check gameover
-      if self._num_cards_played == _NUM_CARDS:
-        self._game_over = True
-        # calc zero sum returns
-        self._returns[0] = round((self._points[0] - self._max_points // 2) / self._max_points, 3)
-        self._returns[1] = round((self._points[1] - self._max_points // 2) / self._max_points, 3)
+        # check gameover
+        if self._num_cards_played == _NUM_CARDS:
+          self._game_over = True
+          # calc zero sum returns
+          for pi in range(_NUM_PLAYERS):
+            self._returns[pi] = round((self._points[pi] - self._max_points // 2) / self._max_points, 3)
+        else:
+          self._next_player = winner
+      # trick not yet finished, continue with next player
       else:
-        self._next_player = winner
+        self._next_player = self.next_player()
+
 
 
   def _action_to_string(self, player, action):
