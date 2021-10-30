@@ -35,6 +35,9 @@ from open_spiel.python.bots import human
 from open_spiel.python.bots import uniform_random
 import pyspiel
 
+# HACK: need to import games else load_game does not find py games
+import open_spiel.python.games
+
 _KNOWN_PLAYERS = [
     # A generic Monte Carlo Tree Search agent.
     "mcts",

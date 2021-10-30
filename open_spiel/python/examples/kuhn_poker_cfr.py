@@ -29,7 +29,7 @@ import pyspiel
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer("iterations", 1000, "Number of iterations")
+flags.DEFINE_integer("iterations", 500, "Number of iterations")
 flags.DEFINE_string("game", "kuhn_poker", "Name of the game")
 flags.DEFINE_integer("players", 2, "Number of players")
 flags.DEFINE_integer("print_freq", 100, "How often to print the exploit    ability")

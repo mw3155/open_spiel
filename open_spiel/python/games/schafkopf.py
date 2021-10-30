@@ -29,16 +29,16 @@ class Rank(enum.IntEnum):
   Neun = 0
   König = 1
   Zehn = 2
-  #Ass = 3
-  #Unter = 4
-  #Ober = 5
+  Ass = 3
+  Unter = 4
+  Ober = 5
 
 
 class Suit(enum.IntEnum):
   Schellen = 0
   Herz = 1
-  #Gras = 2
-  #Eichel = 3
+  Gras = 2
+  Eichel = 3
 
 class CardLocation(enum.IntEnum):
   Hand0 = 0
@@ -55,12 +55,11 @@ class Phase(enum.IntEnum):
 
 
 _NUM_PLAYERS = 2
-_NUM_SUITS = 2
-_NUM_RANKS = 3
+_NUM_SUITS = 1
+_NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
 _NUM_TRICKS = _NUM_CARDS / _NUM_PLAYERS
 _NUM_ACTIONS = _NUM_CARDS
-#_DECK = frozenset(list(range(_NUM_CARDS)))
 
 _GAME_TYPE = pyspiel.GameType(
     short_name="python_schafkopf",
@@ -94,7 +93,9 @@ def CardSuit(card):
 def CardRank(card):
   return card % _NUM_RANKS
 
-RankToValue = dict([(0, 0), (1, 4), (2, 10)])
+RankToValue = dict([
+  (0, 0), (1, 4), (2, 10), (3, 11), (4, 2), (5, 3)
+])
 def CardValue(card):
   return RankToValue[CardRank(card)] 
 
@@ -155,10 +156,11 @@ class SchafkopfState(pyspiel.State):
     """Constructor; should only be called by Game.new_initial_state."""
     super().__init__(game)
 
-    # deal random cards
+    # deal random cards; why not working with CFR?
     idx_cards_p0 = random.sample(range(_NUM_CARDS), _NUM_CARDS // 2)
     #TODO: need dealing
-    idx_cards_p0 = [3,1,2]
+    idx_cards_p0 = list(range(_NUM_CARDS//2,_NUM_CARDS))
+    idx_cards_p0 = list(range(1, _NUM_CARDS, 2))
 
     self._card_locations = [
       CardLocation.Hand0 \
@@ -270,8 +272,8 @@ class SchafkopfState(pyspiel.State):
       if self._num_cards_played == _NUM_CARDS:
         self._game_over = True
         # calc zero sum returns
-        self._returns[0] = (self._points[0] - self._max_points // 2) / self._max_points
-        self._returns[1] = (self._points[1] - self._max_points // 2) / self._max_points
+        self._returns[0] = round((self._points[0] - self._max_points // 2) / self._max_points, 3)
+        self._returns[1] = round((self._points[1] - self._max_points // 2) / self._max_points, 3)
       else:
         self._next_player = winner
 
@@ -279,9 +281,9 @@ class SchafkopfState(pyspiel.State):
   def _action_to_string(self, player, action):
     """Action -> string."""
     if player == pyspiel.PlayerId.CHANCE:
-      return f"Deal:{action}"
+      return f"D{action}"
     else:
-      return f"Player:{player}, Action:{action}"
+      return f"P{player}:A{action}"
 
   def is_terminal(self):
     """Returns True if the game is over."""
