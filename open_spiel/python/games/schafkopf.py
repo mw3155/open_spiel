@@ -53,10 +53,23 @@ class Phase(enum.IntEnum):
   Play = 1
   GameOver = 2
 
+# Cards are sorted first by rank and then by suit
+def CardSuit(card):
+  return card // _NUM_RANKS
+
+def CardRank(card):
+  return card % _NUM_RANKS
+
+RankToValue = dict([
+  (0, 0), (1, 4), (2, 10), (3, 11), (4, 2), (5, 3)
+])
+def CardValue(card):
+  return RankToValue[CardRank(card)] 
+
 
 _NUM_PLAYERS = 2
-_NUM_SUITS = 1
-_NUM_RANKS = 6
+_NUM_SUITS = 2
+_NUM_RANKS = 2
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
 _NUM_TRICKS = _NUM_CARDS / _NUM_PLAYERS
 _NUM_ACTIONS = _NUM_CARDS
@@ -85,21 +98,6 @@ _GAME_INFO = pyspiel.GameInfo(
     utility_sum=0.0,
     max_game_length=_NUM_CARDS)
 
-
-# Cards are sorted first by rank and then by suit
-def CardSuit(card):
-  return card // _NUM_RANKS
-
-def CardRank(card):
-  return card % _NUM_RANKS
-
-RankToValue = dict([
-  (0, 0), (1, 4), (2, 10), (3, 11), (4, 2), (5, 3)
-])
-def CardValue(card):
-  return RankToValue[CardRank(card)] 
-
-
 class SchafkopfTrick:
   def __init__(self, leader = 0):
     self._cards = []
@@ -125,10 +123,10 @@ class SchafkopfTrick:
     return sum(CardValue(c) for c in self._cards)
 
   def __str__(self):
-    ss = f"leader: {self._leader};"
-    ss += f"led_suit: {self._led_suit};"
-    ss += f"played: {self._cards};"
-    ss += f"points: {self.points()}"
+    ss = f"leader:{self._leader}; "
+    ss += f"led_suit:{self._led_suit}; "
+    ss += f"played:{self._cards}; "
+    ss += f"points:{self.points()}"
     return ss
     
 
@@ -156,18 +154,21 @@ class SchafkopfState(pyspiel.State):
     """Constructor; should only be called by Game.new_initial_state."""
     super().__init__(game)
 
+    self._phase = Phase.Deal
+
     # deal random cards; why not working with CFR?
     idx_cards_p0 = random.sample(range(_NUM_CARDS), _NUM_CARDS // 2)
     #TODO: need dealing
-    idx_cards_p0 = list(range(_NUM_CARDS//2,_NUM_CARDS))
-    idx_cards_p0 = list(range(1, _NUM_CARDS, 2))
+    #idx_cards_p0 = list(range(_NUM_CARDS//2,_NUM_CARDS))
+    #idx_cards_p0 = list(range(1, _NUM_CARDS, 2))
 
-    self._card_locations = [
-      CardLocation.Hand0 \
-        if i in idx_cards_p0 \
-        else CardLocation.Hand1 \
-      for i in range(_NUM_CARDS)
-    ]
+    self._card_locations = [CardLocation.Deck] * _NUM_CARDS
+    #self._card_locations = [
+    #  CardLocation.Hand0 \
+    #    if i in idx_cards_p0 \
+    #    else CardLocation.Hand1 \
+    #  for i in range(_NUM_CARDS)
+    #]
 
     self._num_cards_played = 0
     self._tricks = []
@@ -179,7 +180,7 @@ class SchafkopfState(pyspiel.State):
       self._max_points += CardValue(c)
 
     # TODO: set random??
-    self._next_player = 1
+    self._next_player = 0
     self._game_over = False
 
   # OpenSpiel (PySpiel) API functions are below. This is the standard set that
@@ -198,28 +199,39 @@ class SchafkopfState(pyspiel.State):
   def next_player(self):
     return (self.current_player() + 1) % _NUM_PLAYERS
 
+
   def player_cards(self, player):
     return [c for c,loc in enumerate(self._card_locations) if loc == player]
 
+  def _deal_legal_actions(self):
+    return [c for c,loc in enumerate(self._card_locations) if loc == CardLocation.Deck]
+
   def _legal_actions(self, player):
     """Returns a list of legal actions, sorted in ascending order."""
+
+    # return all deal actions
+    if self._phase == Phase.Deal:
+      return self._deal_legal_actions()
+
+    # get all player cards
     assert player >= 0
-    legal_actions = []
+    pcards = self.player_cards(player)
 
-    # TODO
-    # case1: must follow suit
-    #for i,loc in enumerate(self._card_locations):
-    #  print(loc)
-    #  if loc == player:
-    #    if CardSuit(i) == self._tricks[-1]._led_suit:
-    #      legal_actions.append(i)
+    # noone played a card yet
+    if self._num_cards_played == 0:
+      return pcards
 
-    # case2: can play anything
-    return self.player_cards(player)
-    #for i,loc in enumerate(self._card_locations):
-    #  print(loc)
-    #  if loc == player:
-    #    legal_actions.append(i)
+    # new trick begins, can play any card
+    if self._num_cards_played % _NUM_PLAYERS == 0:
+      return pcards
+
+    # check if we must follow suit
+    led_suit = self._tricks[-1]._led_suit
+    same_suit = []
+    for c in pcards:
+      if CardSuit(c) == led_suit:
+        same_suit.append(c)
+    return same_suit if len(same_suit) > 0 else pcards
 
 
   def winner(self, trick):
@@ -245,8 +257,20 @@ class SchafkopfState(pyspiel.State):
         outcomes.append((c, p))
     return outcomes
 
+
+  def _apply_deal_action(self, card):
+    self._card_locations[card] = CardLocation(self._next_player)
+    self._next_player = self.next_player()
+    if len(self._deal_legal_actions()) == 0:
+      self._phase = Phase.Play
+
+
   def _apply_action(self, card):
     """Applies the specified action to the state."""
+    if self._phase == Phase.Deal:
+      self._apply_deal_action(card)
+      return
+
     if self._num_cards_played % _NUM_PLAYERS == 0:
       # create new trick
       self._tricks.append(SchafkopfTrick(self.current_player()))
@@ -295,7 +319,8 @@ class SchafkopfState(pyspiel.State):
 
   def __str__(self):
     """String for debug purposes. No particular semantics are required."""
-    s = f"_num_cards_played = {self._num_cards_played}\n"
+    s = f"phase = {self._phase}\n"
+    s += f"_num_cards_played = {self._num_cards_played}\n"
     s += f"points = {self._points}\n"
     s += f"nextplayer = {self._next_player}\n"
     s += f"num_tricks = {len(self._tricks)}\n"
