@@ -58,8 +58,11 @@ _KNOWN_PLAYERS = [
 ]
 
 flags.DEFINE_string("game", "tic_tac_toe", "Name of the game.")
+flags.DEFINE_integer("num_players", 3, "_NUM_PLAYERS")
 flags.DEFINE_enum("player1", "mcts", _KNOWN_PLAYERS, "Who controls player 1.")
 flags.DEFINE_enum("player2", "random", _KNOWN_PLAYERS, "Who controls player 2.")
+flags.DEFINE_enum("player3", "random", _KNOWN_PLAYERS, "Who controls player 3.")
+flags.DEFINE_enum("player4", "random", _KNOWN_PLAYERS, "Who controls player 4.")
 flags.DEFINE_string("gtp_path", None, "Where to find a binary for gtp.")
 flags.DEFINE_multi_string("gtp_cmd", [], "GTP commands to run at init.")
 flags.DEFINE_string("az_path", None,
@@ -193,16 +196,21 @@ def _play_game(game, bots, initial_actions):
 
 
 def main(argv):
+
+  # NOTE: kinda hacky way to set num_players
+  open_spiel.python.games.schafkopf._NUM_PLAYERS = FLAGS.num_players
   game = pyspiel.load_game(FLAGS.game)
-  if game.num_players() > 2:
-    sys.exit("This game requires more players than the example can handle.")
   bots = [
       _init_bot(FLAGS.player1, game, 0),
       _init_bot(FLAGS.player2, game, 1),
+      _init_bot(FLAGS.player3, game, 2),
+      _init_bot(FLAGS.player4, game, 3),
   ]
+  bots = bots[:FLAGS.num_players]
+
   histories = collections.defaultdict(int)
-  overall_returns = [0, 0]
-  overall_wins = [0, 0]
+  overall_returns = [0] * FLAGS.num_players
+  overall_wins = [0] * FLAGS.num_players
   game_num = 0
   try:
     for game_num in range(FLAGS.num_games):
@@ -217,7 +225,8 @@ def main(argv):
     print("Caught a KeyboardInterrupt, stopping early.")
   print("Number of games played:", game_num + 1)
   print("Number of distinct games played:", len(histories))
-  print("Players:", FLAGS.player1, FLAGS.player2)
+  max_players = [FLAGS.player1, FLAGS.player2, FLAGS.player3, FLAGS.player4]
+  print("Players:", max_players[:FLAGS.num_players])
   print("Overall wins", overall_wins)
   print("Overall returns", overall_returns)
 

@@ -76,7 +76,7 @@ def CardValue(card):
     return RankToValue[CardRank(card)]
 
 
-_NUM_PLAYERS = 2
+_NUM_PLAYERS = 4
 _NUM_SUITS = 4
 _NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
@@ -170,9 +170,9 @@ class SchafkopfState(pyspiel.State):
         self._tricks = []
 
         # there are only two teams: player0 vs player1+player2+...
-        self._returns = [0.0] * 2
+        self._returns = [0.0] * _NUM_PLAYERS
         self._points = [0.0] * _NUM_PLAYERS
-        self._all_player_cards = [ [] for _ in range(_NUM_PLAYERS)]
+        self._all_player_cards = [[] for _ in range(_NUM_PLAYERS)]
         self._max_points = 0
         for c in range(_NUM_CARDS):
             self._max_points += CardValue(c)
@@ -304,7 +304,10 @@ class SchafkopfState(pyspiel.State):
                     # calc zero sum returns
                     self._returns[0] = round(
                         (self._points[0] - self._max_points // 2) / self._max_points, 3)
-                    self._returns[1] = -1 * self._returns[0]
+                    # everyone in the team gets the same score
+                    for i in range(1, _NUM_PLAYERS):
+                        self._returns[i] = round(
+                            (-1 * self._returns[0]) / (_NUM_PLAYERS-1), 3)
                 else:
                     self._next_player = winner
             # trick not yet finished, continue with next player
