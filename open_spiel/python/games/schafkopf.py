@@ -76,8 +76,8 @@ def CardValue(card):
     return RankToValue[CardRank(card)]
 
 
-_NUM_PLAYERS = 4
-_NUM_SUITS = 2
+_NUM_PLAYERS = 2
+_NUM_SUITS = 4
 _NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
 _NUM_TRICKS = _NUM_CARDS / _NUM_PLAYERS
@@ -172,6 +172,7 @@ class SchafkopfState(pyspiel.State):
         # there are only two teams: player0 vs player1+player2+...
         self._returns = [0.0] * 2
         self._points = [0.0] * _NUM_PLAYERS
+        self._all_player_cards = [[]] * _NUM_PLAYERS
         self._max_points = 0
         for c in range(_NUM_CARDS):
             self._max_points += CardValue(c)
@@ -180,6 +181,9 @@ class SchafkopfState(pyspiel.State):
         # NOTE: solo player is always player0 for now
         self._solo_player = 0
         self._game_over = False
+
+        # performance
+        self._cur_legal_deal_actions = list(range(_NUM_CARDS))
 
     # OpenSpiel (PySpiel) API functions are below. This is the standard set that
     # should be implemented by every sequential-move game with chance.
@@ -197,10 +201,10 @@ class SchafkopfState(pyspiel.State):
         return (self.current_player() + 1) % _NUM_PLAYERS
 
     def player_cards(self, player):
-        return [c for c, loc in enumerate(self._card_locations) if loc == player]
+        return self._all_player_cards[player]
 
     def _legal_deal_actions(self):
-        return [c for c, loc in enumerate(self._card_locations) if loc == CardLocation.Deck]
+        return self._cur_legal_deal_actions
 
     def _legal_actions(self, player):
         """Returns a list of legal actions, sorted in ascending order."""
@@ -223,10 +227,7 @@ class SchafkopfState(pyspiel.State):
 
         # check if we must follow suit
         led_suit = self._tricks[-1]._led_suit
-        same_suit = []
-        for c in pcards:
-            if CardSuit(c) == led_suit:
-                same_suit.append(c)
+        same_suit = [c for c in pcards if CardSuit(c) == led_suit]
         return same_suit if len(same_suit) > 0 else pcards
 
     def winner(self, trick):
@@ -253,9 +254,15 @@ class SchafkopfState(pyspiel.State):
         cards_left = self._legal_deal_actions()
         receiving_player = CardLocation(len(cards_left) % _NUM_PLAYERS)
         self._card_locations[card] = receiving_player
+        self._all_player_cards[receiving_player].append(card)
+        self._cur_legal_deal_actions.remove(card)
 
         # last card has been dealt -> start the game
         if len(cards_left) == 1:
+            # must sort cards ascending for pyspiel
+            for i, cards in enumerate(self._all_player_cards):
+                self._all_player_cards[i] = sorted(cards)
+
             self._phase = Phase.Play
             # NOTE: player0 always start the first trick for now
             self._next_player = 0
@@ -272,12 +279,15 @@ class SchafkopfState(pyspiel.State):
 
             self._tricks[-1].play_card(card)
             self._card_locations[card] = CardLocation.Trick
+            self._all_player_cards[self.current_player()].remove(card)
             self._num_cards_played += 1
+
             self._next_player = self.next_player()
 
         else:
             self._tricks[-1].play_card(card)
             self._card_locations[card] = CardLocation.Trick
+            self._all_player_cards[self.current_player()].remove(card)
             self._num_cards_played += 1
 
             # trick finished?
