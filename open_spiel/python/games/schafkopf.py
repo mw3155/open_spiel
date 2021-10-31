@@ -172,7 +172,7 @@ class SchafkopfState(pyspiel.State):
         # there are only two teams: player0 vs player1+player2+...
         self._returns = [0.0] * 2
         self._points = [0.0] * _NUM_PLAYERS
-        self._all_player_cards = [[]] * _NUM_PLAYERS
+        self._all_player_cards = [ [] for _ in range(_NUM_PLAYERS)]
         self._max_points = 0
         for c in range(_NUM_CARDS):
             self._max_points += CardValue(c)
@@ -252,13 +252,13 @@ class SchafkopfState(pyspiel.State):
         # simulate card dealing
         # everyone is delt one card at a time in counterclock order is: p0 p3 p2 p1 ...
         cards_left = self._legal_deal_actions()
-        receiving_player = CardLocation(len(cards_left) % _NUM_PLAYERS)
-        self._card_locations[card] = receiving_player
+        receiving_player = len(cards_left) % _NUM_PLAYERS
+        self._card_locations[card] = CardLocation(receiving_player)
         self._all_player_cards[receiving_player].append(card)
         self._cur_legal_deal_actions.remove(card)
 
         # last card has been dealt -> start the game
-        if len(cards_left) == 1:
+        if len(self._legal_deal_actions()) == 0:
             # must sort cards ascending for pyspiel
             for i, cards in enumerate(self._all_player_cards):
                 self._all_player_cards[i] = sorted(cards)
