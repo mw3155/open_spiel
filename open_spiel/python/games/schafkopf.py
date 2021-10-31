@@ -76,8 +76,8 @@ def CardValue(card):
     return RankToValue[CardRank(card)]
 
 
-_NUM_PLAYERS = 3
-_NUM_SUITS = 1
+_NUM_PLAYERS = 4
+_NUM_SUITS = 2
 _NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
 _NUM_TRICKS = _NUM_CARDS / _NUM_PLAYERS
@@ -177,6 +177,8 @@ class SchafkopfState(pyspiel.State):
             self._max_points += CardValue(c)
 
         self._next_player = pyspiel.PlayerId.CHANCE
+        # NOTE: solo player is always player0 for now
+        self._solo_player = 0
         self._game_over = False
 
     # OpenSpiel (PySpiel) API functions are below. This is the standard set that
@@ -242,16 +244,14 @@ class SchafkopfState(pyspiel.State):
         """Returns the possible chance outcomes and their probabilities."""
         assert self.is_chance_node()
         cards_to_deal = self._legal_deal_actions()
-        if len(cards_to_deal) == 0:
-            print("ERRR no deal cards")
-            exit()
         p = 1 / len(cards_to_deal)
         return [(c, p) for c in cards_to_deal]
 
     def _apply_deal_action(self, card):
+        # simulate card dealing
+        # everyone is delt one card at a time in counterclock order is: p0 p3 p2 p1 ...
         cards_left = self._legal_deal_actions()
         receiving_player = CardLocation(len(cards_left) % _NUM_PLAYERS)
-        print("receiving:", receiving_player)
         self._card_locations[card] = receiving_player
 
         # last card has been dealt -> start the game
@@ -276,7 +276,6 @@ class SchafkopfState(pyspiel.State):
             self._next_player = self.next_player()
 
         else:
-            # TODO: only 2player implemented
             self._tricks[-1].play_card(card)
             self._card_locations[card] = CardLocation.Trick
             self._num_cards_played += 1
@@ -293,7 +292,8 @@ class SchafkopfState(pyspiel.State):
                 if self._num_cards_played == _NUM_CARDS:
                     self._game_over = True
                     # calc zero sum returns
-                    self._returns[0] = round((self._points[0] - self._max_points // 2) / self._max_points, 3)
+                    self._returns[0] = round(
+                        (self._points[0] - self._max_points // 2) / self._max_points, 3)
                     self._returns[1] = -1 * self._returns[0]
                 else:
                     self._next_player = winner
@@ -382,8 +382,7 @@ class SchafkopfObserver:
                     if loc == p:
                         self.dict["private_cards"][loc][c] = 1
 
-        # TODO: not used yet
-        self.dict["solo_player"][0] = 1
+        self.dict["solo_player"][0] = state._solo_player
 
         if len(state._tricks) > 0:
             cur_trick = state._tricks[-1]
