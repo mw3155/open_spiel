@@ -67,7 +67,7 @@ def CardValue(card):
   return RankToValue[CardRank(card)] 
 
 
-_NUM_PLAYERS = 2
+_NUM_PLAYERS = 3
 _NUM_SUITS = 1
 _NUM_RANKS = 6
 _NUM_CARDS = _NUM_SUITS * _NUM_RANKS
@@ -165,8 +165,7 @@ class SchafkopfState(pyspiel.State):
     for c in range(_NUM_CARDS):
       self._max_points += CardValue(c)
 
-    # TODO: set random??
-    self._next_player = 0
+    self._next_player = pyspiel.PlayerId.CHANCE
     self._game_over = False
 
   # OpenSpiel (PySpiel) API functions are below. This is the standard set that
@@ -176,9 +175,8 @@ class SchafkopfState(pyspiel.State):
     """Returns id of the next player to move, or TERMINAL if game is over."""
     if self._game_over:
       return pyspiel.PlayerId.TERMINAL
-    #elif self._num_cards_played == 0:
-    #  self._next_player = pyspiel.PlayerId.CHANCE
-    #  return self._next_player
+    elif self._phase == Phase.Deal:
+      return pyspiel.PlayerId.CHANCE
     else:
       return self._next_player
 
@@ -189,7 +187,7 @@ class SchafkopfState(pyspiel.State):
   def player_cards(self, player):
     return [c for c,loc in enumerate(self._card_locations) if loc == player]
 
-  def _deal_legal_actions(self):
+  def _legal_deal_actions(self):
     return [c for c,loc in enumerate(self._card_locations) if loc == CardLocation.Deck]
 
   def _legal_actions(self, player):
@@ -197,7 +195,7 @@ class SchafkopfState(pyspiel.State):
 
     # return all deal actions
     if self._phase == Phase.Deal:
-      return self._deal_legal_actions()
+      return self._legal_deal_actions()
 
     # get all player cards
     assert player >= 0
@@ -235,20 +233,25 @@ class SchafkopfState(pyspiel.State):
   def chance_outcomes(self):
     """Returns the possible chance outcomes and their probabilities."""
     assert self.is_chance_node()
-    # TODO: probably only used for dealing?
-    outcomes = []
-    p = 1 / (_NUM_CARDS - self._num_cards_played)
-    for c,loc in enumerate(self._card_locations):
-      if loc != CardLocation.Trick:
-        outcomes.append((c, p))
-    return outcomes
+    cards_to_deal = self._legal_deal_actions()
+    if len(cards_to_deal) == 0:
+      print("ERRR no deal cards")
+      exit()
+    p = 1 / len(cards_to_deal)
+    return [(c, p) for c in cards_to_deal]
 
 
   def _apply_deal_action(self, card):
-    self._card_locations[card] = CardLocation(self._next_player)
-    self._next_player = self.next_player()
-    if len(self._deal_legal_actions()) == 0:
+    cards_left = self._legal_deal_actions()
+    receiving_player = CardLocation(len(cards_left) % _NUM_PLAYERS)
+    print("receiving:", receiving_player)
+    self._card_locations[card] = receiving_player
+
+    # last card has been dealt -> start the game
+    if len(cards_left) == 1:
       self._phase = Phase.Play
+      # NOTE: player0 always start the first trick for now
+      self._next_player = 0
 
 
   def _apply_action(self, card):
